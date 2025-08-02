@@ -1,2 +1,0 @@
-# YUPA BOT
-
