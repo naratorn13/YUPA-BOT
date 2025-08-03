@@ -6,13 +6,15 @@ import base64
 import requests
 import json
 from datetime import datetime, timezone
+import os
 
 app = Flask(__name__)
 
-# === OKX API CONFIG ===
-API_KEY = '3f9195c4-0485-4ebf-abc8-161d85857005'
-API_SECRET = 'DC9F9093F03F8791D098C5CF80A54921'
-API_PASSPHRASE = '13112535DODo.'
+import os
+
+API_KEY = os.getenv("API_KEY")
+API_SECRET = os.getenv("API_SECRET")
+API_PASSPHRASE = os.getenv("API_PASSPHRASE")
 BASE_URL = 'https://www.okx.com'
 
 # === SIGNATURE GENERATOR ===
@@ -22,50 +24,92 @@ def generate_signature(timestamp, method, request_path, body=''):
     d = mac.digest()
     return base64.b64encode(d).decode()
 
-# === SEND REQUEST TO OKX ===
-def send_order_to_okx(data):
-    print("[⏳] Sending order to OKX:", data)
-
+# === OKX REQUEST ===
+def okx_request(method, path, body_dict=None):
     timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
-    method = "POST"
-    endpoint = "/api/v5/trade/order"
-
-    body_dict = {
-        "instId": data["symbol"],
-        "tdMode": "isolated",
-        "side": data["side"],
-        "ordType": "market",
-        "sz": str(data["percent"]),
-        "lever": str(data["leverage"])
-    }
-    body = json.dumps(body_dict)
-    sign = generate_signature(timestamp, method, endpoint, body)
-
+    body = json.dumps(body_dict) if body_dict else ''
     headers = {
-        "Content-Type": "application/json",
-        "OK-ACCESS-KEY": API_KEY,
-        "OK-ACCESS-SIGN": sign,
-        "OK-ACCESS-TIMESTAMP": timestamp,
-        "OK-ACCESS-PASSPHRASE": API_PASSPHRASE,
-        "x-simulated-trading": "1"  # ใส่ "1" ถ้าเป็น testnet / ลองเอาออกถ้าใช้เงินจริง
+        'OK-ACCESS-KEY': API_KEY,
+        'OK-ACCESS-SIGN': generate_signature(timestamp, method, path, body),
+        'OK-ACCESS-TIMESTAMP': timestamp,
+        'OK-ACCESS-PASSPHRASE': API_PASSPHRASE,
+        'Content-Type': 'application/json'
+    }
+    url = BASE_URL + path
+    response = requests.request(method, url, headers=headers, data=body)
+    return response.json()
+
+# === GET BALANCE ===
+def get_balance(token="USDT"):
+    result = okx_request('GET', '/api/v5/account/balance')
+    for item in result.get("data", [])[0].get("details", []):
+        if item.get("ccy") == token:
+            return float(item.get("availEq"))
+    return 0.0
+
+# === GET MARKET PRICE ===
+def get_market_price(symbol):
+    result = okx_request('GET', f'/api/v5/market/ticker?instId={symbol}')
+    return float(result.get("data", [])[0].get("last", 0))
+
+# === SEND ORDER ===
+def send_order_to_okx(symbol, side, percent=25, leverage=10):
+    print(f"🚀 Preparing to send order: {side.upper()} {percent}% of balance on {symbol} with {leverage}x")
+    
+    balance = get_balance("USDT")
+    price = get_market_price(symbol)
+
+    notional = balance * (percent / 100) * leverage
+    size = round(notional / price, 3)
+
+    print(f"[DEBUG] Balance: {balance}, Price: {price}, Size: {size}")
+
+    body = {
+        "instId": symbol,
+        "tdMode": "cross",
+        "side": side,
+        "ordType": "market",
+        "sz": str(size),
+        "posSide": "long" if side == "buy" else "short",
+        "lever": str(leverage)
     }
 
-    response = requests.post(BASE_URL + endpoint, headers=headers, data=body)
+    print("✅ Order body ready, sending to OKX...")
+    
+    try:
+        response = okx_request("POST", "/api/v5/trade/order", body)
+        print(f"✅ Order sent! Response: {response}")
+        return response
+    except Exception as e:
+        print(f"❌ Error while sending order: {str(e)}")
+        return None
 
-    print("[✅] OKX Response:", response.text)
-    return response.text
+# === HOME ===
+@app.route("/")
+def home():
+    return "Bot is running!"
 
-# === WEBHOOK ROUTE ===
-@app.route('/webhook', methods=['POST'])
+# === WEBHOOK ===
+@app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.json
-    print("[📥] Webhook Received:", data)
+    data = request.get_json()
+    print("[Webhook] Received:", data)
 
-    # ส่งไป OKX เลย
-    send_order_to_okx(data)
+    action = data.get("action")
+    symbol = data.get("symbol", "SOL-USDT-SWAP")
+    percent = float(data.get("percent", 25))
+    leverage = int(data.get("leverage", 10))
 
-    return jsonify({'status': 'received'}), 200
+    if action in ["buy", "sell"]:
+        response = send_order_to_okx(symbol, action, percent, leverage)
+        return jsonify({"status": "order_sent", "response": response})
+    else:
+        return jsonify({"status": "invalid action", "data": data})
 
-# === MAIN ===
-if __name__ == '__main__':
-    app.run(debug=True)
+# === RUN APP ===
+from waitress import serve
+import os
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    serve(app, host="0.0.0.0", port=port)
