@@ -16,6 +16,10 @@ API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
 API_PASSPHRASE = os.getenv("API_PASSPHRASE")
 BASE_URL = 'https://www.okx.com'
+if not all([API_KEY, API_SECRET, API_PASSPHRASE]):
+    raise ValueError("❌ Environment variable(s) missing: Please check API_KEY, API_SECRET, and API_PASSPHRASE.")
+
+
 
 # === SIGNATURE GENERATOR ===
 def generate_signature(timestamp, method, request_path, body=''):
