@@ -11,6 +11,22 @@ import os
 app = Flask(__name__)
 
 import os
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    data = request.get_json()
+    print(f"📩 Webhook received: {data}")
+
+    try:
+        symbol = data.get("symbol")
+        side = data.get("side")
+        percent = data.get("percent", 25)
+        leverage = data.get("leverage", 10)
+
+        send_order_to_okx(symbol, side, percent, leverage)
+
+        return jsonify({"status": "success", "message": "Order sent"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
@@ -53,9 +69,14 @@ def get_market_price(symbol):
     return float(result.get("data", [])[0].get("last", 0))
 
 # === SEND ORDER ===
-def send_order_to_okx(symbol, side, percent=25, leverage=10):
-    print(f"🚀 Preparing to send order: {side.upper()} {percent}% of balance on {symbol} with {leverage}x")
-    
+def send_order_to_okx(data):
+    symbol = data.get("symbol")
+    side = data.get("side")
+    percent = data.get("percent", 25)
+    leverage = data.get("leverage", 10)
+
+    print(f"🚀 Preparing to send order {side.upper()} {percent}% of balance on {symbol} with {leverage}x")
+
     balance = get_balance("USDT")
     price = get_market_price(symbol)
 
@@ -75,7 +96,7 @@ def send_order_to_okx(symbol, side, percent=25, leverage=10):
     }
 
     print("✅ Order body ready, sending to OKX...")
-    
+
     try:
         response = okx_request("POST", "/api/v5/trade/order", body)
         print(f"✅ Order sent! Response: {response}")
@@ -83,6 +104,7 @@ def send_order_to_okx(symbol, side, percent=25, leverage=10):
     except Exception as e:
         print(f"❌ Error while sending order: {str(e)}")
         return None
+
 
 # === HOME ===
 @app.route("/")
