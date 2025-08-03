@@ -12,23 +12,6 @@ app = Flask(__name__)
 
 import os
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.get_json()
-    print(f"📩 Webhook received: {data}")
-
-    try:
-        symbol = data.get("symbol")
-        side = data.get("side")
-        percent = data.get("percent", 25)
-        leverage = data.get("leverage", 10)
-
-        send_order_to_okx(symbol, side, percent, leverage)
-
-        return jsonify({"status": "success", "message": "Order sent"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
 API_PASSPHRASE = os.getenv("API_PASSPHRASE")
@@ -116,18 +99,20 @@ def home():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
-    print("[Webhook] Received:", data)
+    print(f"📩 Webhook received: {data}")
 
-    action = data.get("action")
-    symbol = data.get("symbol", "SOL-USDT-SWAP")
-    percent = float(data.get("percent", 25))
-    leverage = int(data.get("leverage", 10))
+    try:
+        symbol = data.get("symbol")
+        side = data.get("side")
+        percent = data.get("percent", 25)
+        leverage = data.get("leverage", 10)
 
-    if action in ["buy", "sell"]:
-        response = send_order_to_okx(symbol, action, percent, leverage)
-        return jsonify({"status": "order_sent", "response": response})
-    else:
-        return jsonify({"status": "invalid action", "data": data})
+        send_order_to_okx(symbol, side, percent, leverage)
+
+        return jsonify({"status": "success", "message": "Order sent"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 # === RUN APP ===
 from waitress import serve
