@@ -54,6 +54,8 @@ def get_market_price(symbol):
 
 # === SEND ORDER ===
 def send_order_to_okx(symbol, side, percent=25, leverage=10):
+    print(f"🚀 Preparing to send order: {side.upper()} {percent}% of balance on {symbol} with {leverage}x")
+    
     balance = get_balance("USDT")
     price = get_market_price(symbol)
 
@@ -72,7 +74,15 @@ def send_order_to_okx(symbol, side, percent=25, leverage=10):
         "lever": str(leverage)
     }
 
-    return okx_request("POST", "/api/v5/trade/order", body)
+    print("✅ Order body ready, sending to OKX...")
+    
+    try:
+        response = okx_request("POST", "/api/v5/trade/order", body)
+        print(f"✅ Order sent! Response: {response}")
+        return response
+    except Exception as e:
+        print(f"❌ Error while sending order: {str(e)}")
+        return None
 
 # === HOME ===
 @app.route("/")
