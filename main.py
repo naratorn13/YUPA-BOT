@@ -11,10 +11,11 @@ import os
 app = Flask(__name__)
 
 # === OKX API CONFIG ===
-API_KEY = 'ใส่ของคุณ'
-API_SECRET = 'ใส่ของคุณ'
-API_PASSPHRASE = 'ใส่ของคุณ'
+API_KEY = os.getenv("API_KEY")
+API_SECRET = os.getenv("API_SECRET")
+API_PASSPHRASE = os.getenv("API_PASSPHRASE")
 BASE_URL = 'https://www.okx.com'
+
 
 # === SIGNATURE GENERATOR ===
 def generate_signature(timestamp, method, request_path, body=''):
