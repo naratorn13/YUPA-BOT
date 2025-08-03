@@ -97,7 +97,7 @@ def home():
 
 # === WEBHOOK ===
 @app.route("/webhook", methods=["POST"])
-def webhook():
+def webhook_handler():
     data = request.get_json()
     print(f"📩 Webhook received: {data}")
 
