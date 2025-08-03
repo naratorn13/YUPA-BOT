@@ -10,15 +10,12 @@ import os
 
 app = Flask(__name__)
 
-# === OKX API CONFIG ===
+import os
+
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
 API_PASSPHRASE = os.getenv("API_PASSPHRASE")
 BASE_URL = 'https://www.okx.com'
-
-print("DEBUG >> API_KEY:", API_KEY)
-print("DEBUG >> API_SECRET:", API_SECRET)
-print("DEBUG >> API_PASSPHRASE:", API_PASSPHRASE)
 
 # === SIGNATURE GENERATOR ===
 def generate_signature(timestamp, method, request_path, body=''):
