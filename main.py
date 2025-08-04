@@ -21,6 +21,9 @@ print("DEBUG API_KEY:", API_KEY)
 print("DEBUG API_SECRET:", API_SECRET)
 print("DEBUG API_PASSPHRASE:", API_PASSPHRASE)
 BASE_URL = 'https://www.okx.com'
+if not API_KEY or not API_SECRET or not API_PASSPHRASE:
+    raise Exception("❌ API Credentials not set in environment variables")
+
 
 # === SIGNATURE GENERATOR ===
 def generate_signature(timestamp, method, request_path, body=''):
@@ -90,6 +93,9 @@ def send_order_to_okx(data):
         response = okx_request("POST", "/api/v5/trade/order", body)
         print(f"✅ Order sent! Response: {response}")
         return response
+    if response.get("code") != "0":
+    print(f"❌ ERROR: Code {response.get('code')} - {response.get('msg')}")
+
     except Exception as e:
         print(f"❌ Error while sending order: {str(e)}")
         return None
