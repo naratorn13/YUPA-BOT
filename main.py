@@ -119,15 +119,17 @@ def env_check():
 # === WEBHOOK ===
 @app.route("/webhook", methods=["POST"])
 def webhook_handler():
-
     data = request.get_json()
     print(f"📩 Webhook received: {data}")
 
     try:
         symbol = data.get("symbol")
         side = data.get("side")
-        percent = data.get("percent", 25)
-        leverage = data.get("leverage", 10)
+        strategy = data.get("strategy", "N/A")
+        comment = data.get("comment", "")
+        timestamp = data.get("timestamp")
+
+        print(f"📊 Strategy: {strategy}, Timestamp: {timestamp}, Comment: {comment}")
 
         send_order_to_okx(data)
 
