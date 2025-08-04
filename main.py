@@ -43,15 +43,26 @@ def okx_request(method, path, body_dict=None):
 # === GET BALANCE ===
 def get_balance(token="USDT"):
     result = okx_request('GET', '/api/v5/account/balance')
-    for item in result.get("data", [])[0].get("details", []):
+    data_list = result.get("data", [])
+    if not data_list:
+        print("❌ [get_balance] No data in balance response")
+        return 0.0
+
+    for item in data_list[0].get("details", []):
         if item.get("ccy") == token:
             return float(item.get("availEq"))
     return 0.0
 
+
 # === GET MARKET PRICE ===
 def get_market_price(symbol):
     result = okx_request('GET', f'/api/v5/market/ticker?instId={symbol}')
-    return float(result.get("data", [])[0].get("last", 0))
+    data_list = result.get("data", [])
+    if not data_list:
+        print("❌ [get_market_price] No data in ticker response")
+        return 0.0
+    return float(data_list[0].get("last", 0))
+
 
 # === SEND ORDER ===
 def send_order_to_okx(data):
