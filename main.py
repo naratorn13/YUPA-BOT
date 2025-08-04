@@ -12,9 +12,9 @@ app = Flask(__name__)
 
 import os
 
-API_KEY = os.environ.get("OKX_API_KEY") or "a056674a-3669-4cb6-9de2-5e217fe15d5f"
-API_SECRET = os.environ.get("OKX_API_SECRET") or "YD16E1DC09230BFC2EB8B4047BD8164ADE"
-API_PASSPHRASE = os.environ.get("OKX_API_PASSPHRASE") or "13112535DOdo.ee"
+API_KEY = 'a056674a-3669-4cb6-9de2-5e217fe15d5f'
+API_SECRET = 'D16E1DC09230BFC2EB8B4047BD8164AD'
+API_PASSPHRASE = '13112535DODo.ee'
 
 BASE_URL = 'https://www.okx.com'
 print("✅ DEBUG ENV LOADED:", API_KEY, API_SECRET, API_PASSPHRASE)
@@ -28,7 +28,7 @@ def generate_signature(timestamp, method, request_path, body=''):
 
 # === OKX REQUEST ===
 def okx_request(method, path, body_dict=None):
-    timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+    timestamp = datetime.utcnow().isoformat(timespec='milliseconds') + 'Z'
     body = json.dumps(body_dict) if body_dict else ''
     headers = {
         'OK-ACCESS-KEY': API_KEY,
