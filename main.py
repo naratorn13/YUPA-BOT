@@ -98,6 +98,7 @@ def home():
 # === WEBHOOK ===
 @app.route("/webhook", methods=["POST"])
 def webhook_handler():
+
     data = request.get_json()
     print(f"📩 Webhook received: {data}")
 
@@ -107,8 +108,7 @@ def webhook_handler():
         percent = data.get("percent", 25)
         leverage = data.get("leverage", 10)
 
-        def send_order_to_okx(symbol, side, percent, leverage):
-    
+        send_order_to_okx(symbol, side, percent, leverage)
 
         return jsonify({"status": "success", "message": "Order sent"})
     except Exception as e:
