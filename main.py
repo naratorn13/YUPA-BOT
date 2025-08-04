@@ -10,14 +10,12 @@ import os
 
 app = Flask(__name__)
 
-import os
-
 API_KEY = '926ae451-0621-40fc-a5ed-2fbfd5e18977'
 API_SECRET = 'A899E2F70DB4CC10EDA43956C997BB6E'
 API_PASSPHRASE = '13112535@DOdo'
 
 BASE_URL = 'https://www.okx.com'
-print("✅ DEBUG ENV LOADED:", API_KEY, API_SECRET, API_PASSPHRASE)
+print("✅ DEBUG ENV LOADED:", API_KEY[:6] + "...", "***", "***")
 
 # === SIGNATURE GENERATOR ===
 def generate_signature(timestamp, method, request_path, body=''):
@@ -123,23 +121,8 @@ def env_check():
 def place_order():
     try:
         data = request.json
-        instId = data["instId"]
-        tdMode = data.get("tdMode", "cross")
-        side = data["side"]
-        ordType = data.get("ordType", "market")
-        sz = data["sz"]
-
-        body = {
-            "instId": instId,
-            "tdMode": tdMode,
-            "side": side,
-            "ordType": ordType,
-            "sz": sz
-        }
-
-        result = okx_request("POST", "/api/v5/trade/order", body)
+        result = send_order_to_okx(data)
         return jsonify(result)
-    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -153,11 +136,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     serve(app, host="0.0.0.0", port=port)
 
-@app.route("/envcheck")
-def env_check():
-    return jsonify({
-        "API_KEY": API_KEY,
-        "API_SECRET": API_SECRET,
-        "API_PASSPHRASE": API_PASSPHRASE,
-        "BASE_URL": BASE_URL
-    })
