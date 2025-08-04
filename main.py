@@ -17,6 +17,7 @@ API_SECRET = os.environ.get("OKX_API_SECRET") or "YD16E1DC09230BFC2EB8B4047BD816
 API_PASSPHRASE = os.environ.get("OKX_API_PASSPHRASE") or "13112535DOdo.ee"
 
 BASE_URL = 'https://www.okx.com'
+print("✅ DEBUG ENV LOADED:", API_KEY, API_SECRET, API_PASSPHRASE)
 
 # === SIGNATURE GENERATOR ===
 def generate_signature(timestamp, method, request_path, body=''):
