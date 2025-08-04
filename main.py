@@ -108,7 +108,7 @@ def webhook_handler():
         percent = data.get("percent", 25)
         leverage = data.get("leverage", 10)
 
-        send_order_to_okx(symbol, side, percent, leverage)
+        send_order_to_okx(data)
 
         return jsonify({"status": "success", "message": "Order sent"})
     except Exception as e:
