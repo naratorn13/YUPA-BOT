@@ -12,9 +12,9 @@ app = Flask(__name__)
 
 import os
 
-API_KEY = os.environ.get("OKX_API_KEY") or "YOUR_API_KEY_HERE"
-API_SECRET = os.environ.get("OKX_API_SECRET") or "YOUR_SECRET_HERE"
-API_PASSPHRASE = os.environ.get("OKX_API_PASSPHRASE") or "YOUR_PASSPHRASE_HERE"
+API_KEY = os.environ.get("OKX_API_KEY") or "a056674a-3669-4cb6-9de2-5e217fe15d5f"
+API_SECRET = os.environ.get("OKX_API_SECRET") or "YD16E1DC09230BFC2EB8B4047BD8164ADE"
+API_PASSPHRASE = os.environ.get("OKX_API_PASSPHRASE") or "13112535DOdo.ee"
 
 BASE_URL = 'https://www.okx.com'
 
