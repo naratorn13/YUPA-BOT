@@ -118,25 +118,30 @@ def env_check():
     })
 
 # === WEBHOOK ===
-@app.route("/webhook", methods=["POST"])
-def webhook_handler():
-    data = request.get_json()
-    print(f"📩 Webhook received: {data}")
-
+@app.route("/order", methods=["POST"])
+def place_order():
     try:
-        symbol = data.get("symbol")
-        side = data.get("side")
-        strategy = data.get("strategy", "N/A")
-        comment = data.get("comment", "")
-        timestamp = data.get("timestamp")
+        data = request.json
+        instId = data["instId"]
+        tdMode = data.get("tdMode", "cross")
+        side = data["side"]
+        ordType = data.get("ordType", "market")
+        sz = data["sz"]
 
-        print(f"📊 Strategy: {strategy}, Timestamp: {timestamp}, Comment: {comment}")
+        body = {
+            "instId": instId,
+            "tdMode": tdMode,
+            "side": side,
+            "ordType": ordType,
+            "sz": sz
+        }
 
-        send_order_to_okx(data)
-
-        return jsonify({"status": "success", "message": "Order sent"})
+        result = okx_request("POST", "/api/v5/trade/order", body)
+        return jsonify(result)
+    
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 
 # === RUN APP ===
