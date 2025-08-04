@@ -12,9 +12,9 @@ app = Flask(__name__)
 
 import os
 
-API_KEY = os.getenv("API_KEY")
-API_SECRET = os.getenv("API_SECRET")
-API_PASSPHRASE = os.getenv("API_PASSPHRASE")
+print("DEBUG API_KEY:", API_KEY)
+print("DEBUG API_SECRET:", API_SECRET)
+print("DEBUG API_PASSPHRASE:", API_PASSPHRASE)
 BASE_URL = 'https://www.okx.com'
 
 # === SIGNATURE GENERATOR ===
