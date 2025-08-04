@@ -145,3 +145,12 @@ import os
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     serve(app, host="0.0.0.0", port=port)
+
+@app.route("/envcheck")
+def env_check():
+    return jsonify({
+        "API_KEY": API_KEY,
+        "API_SECRET": API_SECRET,
+        "API_PASSPHRASE": API_PASSPHRASE,
+        "BASE_URL": BASE_URL
+    })
