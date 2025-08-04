@@ -29,7 +29,7 @@ def generate_signature(timestamp, method, request_path, body=''):
 # === OKX REQUEST ===
 def okx_request(method, path, body_dict=None):
     from datetime import timezone
-timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+    timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     body = json.dumps(body_dict) if body_dict else ''
     headers = {
         'OK-ACCESS-KEY': API_KEY,
