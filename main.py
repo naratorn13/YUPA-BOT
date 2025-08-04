@@ -94,6 +94,15 @@ def send_order_to_okx(data):
 @app.route("/")
 def home():
     return "Bot is running!"
+# === ENV CHECK ===
+@app.route("/envcheck")
+def env_check():
+    return jsonify({
+        "API_KEY": API_KEY,
+        "API_SECRET": API_SECRET,
+        "API_PASSPHRASE": API_PASSPHRASE,
+        "BASE_URL": BASE_URL
+    })
 
 # === WEBHOOK ===
 @app.route("/webhook", methods=["POST"])
