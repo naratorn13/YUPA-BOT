@@ -85,7 +85,7 @@ def webhook():
     data = request.get_json()
     print("[Webhook] Received:", data)
 
-    action = data.get("action")
+    action = data.get("side")
     symbol = data.get("symbol", "SOL-USDT-SWAP")
     percent = float(data.get("percent", 25))
     leverage = int(data.get("leverage", 10))
