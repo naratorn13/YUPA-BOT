@@ -98,7 +98,12 @@ def set_leverage(symbol):
 def webhook():
     try:
         data = request.json
+        action = data.get("action")
+        symbol = data.get("symbol")
+        size = data.get("size")
 
+        if not all([action, symbol, size]):
+            return jsonify({"status": "error", "msg": "Missing fields"})
 
 
 if __name__ == "__main__":
