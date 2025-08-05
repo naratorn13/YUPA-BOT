@@ -40,6 +40,7 @@ def send_order(symbol, action, size):
         "ordType": "market",
         "sz": str(size)
     }
+    return okx_request('POST', '/api/v5/trade/order', order_data)
 
     print("✅ Order body ready, sending to OKX...")
 
