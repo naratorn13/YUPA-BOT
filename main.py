@@ -10,19 +10,21 @@ import os
 
 app = Flask(__name__)
 
-API_KEY = '926ae451-0621-40fc-a5ed-2fbfd5e18977'
-API_SECRET = 'A899E2F70DB4CC10EDA43956C997BB6E'
-API_PASSPHRASE = '13112535@DOdo'
+API_KEY = "d3d445c4-bf8c-4122-88d0-f6db7dfaf931"
+API_SECRET = "E801F1565A76E5C2D22B9B9294E8BA75"
+API_PASSPHRASE = "13112535!DOdo"
+BASE_URL = "https://www.okx.com"
 
-BASE_URL = 'https://www.okx.com'
-print("✅ DEBUG ENV LOADED:", API_KEY[:6] + "...", "***", "***")
-
-# === SIGNATURE GENERATOR ===
 def generate_signature(timestamp, method, request_path, body=''):
     message = f'{timestamp}{method.upper()}{request_path}{body}'
     mac = hmac.new(API_SECRET.encode(), message.encode(), hashlib.sha256)
     d = mac.digest()
     return base64.b64encode(d).decode()
+
+# ทดสอบดึง balance
+status, data = okx_request("GET", "/api/v5/account/balance")
+print(f"Status: {status}")
+print("Response:", data)
 
 # === OKX REQUEST ===
 def okx_request(method, path, body_dict=None):
