@@ -22,6 +22,7 @@ def okx_request(method, path, body_dict=None):
     body = json.dumps(body_dict) if body_dict else ''
     headers = {
         'OK-ACCESS-KEY': API_KEY,
+        'OK-ACCESS-SIGN': generate_signature(timestamp, method, path, body),
         'OK-ACCESS-TIMESTAMP': timestamp,
         'OK-ACCESS-PASSPHRASE': API_PASSPHRASE,
         'Content-Type': 'application/json'
