@@ -29,16 +29,34 @@ def okx_request(method, path, body_dict=None):
     from datetime import timezone
     timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     body = json.dumps(body_dict) if body_dict else ''
+    signature = generate_signature(timestamp, method, path, body)
+
     headers = {
         'OK-ACCESS-KEY': API_KEY,
-        'OK-ACCESS-SIGN': generate_signature(timestamp, method, path, body),
+        'OK-ACCESS-SIGN': signature,
         'OK-ACCESS-TIMESTAMP': timestamp,
         'OK-ACCESS-PASSPHRASE': API_PASSPHRASE,
         'Content-Type': 'application/json'
     }
+
     url = BASE_URL + path
+
+    # ✅✅✅ เพิ่มบรรทัด debug ตรงนี้เลย
+    print("\n📤 [OKX REQUEST]")
+    print("→ Method:", method)
+    print("→ URL:", url)
+    print("→ Headers:", {k: (v if k != 'OK-ACCESS-KEY' else v[:6] + '...') for k, v in headers.items()})
+    print("→ Body:", body)
+
     response = requests.request(method, url, headers=headers, data=body)
+
+    print("📥 [OKX RESPONSE]")
+    print("→ Status Code:", response.status_code)
+    print("→ Response Body:", response.text)
+    print("------------------------------------------------------")
+
     return response.json()
+
 
 # === GET BALANCE ===
 def get_balance(token="USDT"):
