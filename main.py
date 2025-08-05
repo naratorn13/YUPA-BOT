@@ -82,5 +82,5 @@ def webhook():
         return jsonify({"status": "error", "msg": str(e)}), 500
 
 if __name__ == '__main__':
-    # แก้ไขตรงนี้สำหรับ production จริง
-    app.run(host='0.0.0.0', port=5000)
+    from waitress import serve
+    serve(app, host='0.0.0.0', port=5000)
