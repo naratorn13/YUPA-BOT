@@ -17,22 +17,28 @@ API_SECRET = os.getenv("API_SECRET")
 API_PASSPHRASE = os.getenv("API_PASSPHRASE")
 BASE_URL = 'https://www.okx.com'
 
-# === SIGNATURE GENERATOR ===
-def generate_signature(timestamp, method, request_path, body=''):
-    assert API_SECRET is not None, "API_SECRET is not set"
+print("[DEBUG] API_KEY:", API_KEY)
+print("[DEBUG] API_SECRET:", "SET" if API_SECRET else "NOT SET")
+print("[DEBUG] API_PASSPHRASE:", API_PASSPHRASE)
+
+def generate_signature(timestamp, method, request_path, body='', api_secret=''):
+    assert api_secret, "API_SECRET is not set"
     message = f'{timestamp}{method.upper()}{request_path}{body}'
-    mac = hmac.new(API_SECRET.encode(), message.encode(), hashlib.sha256)
-    d = mac.digest()
-    return base64.b64encode(d).decode()
+    mac = hmac.new(api_secret.encode(), message.encode(), hashlib.sha256)
+    return base64.b64encode(mac.digest()).decode()
 
 
 # === OKX REQUEST ===
 def okx_request(method, path, body_dict=None):
+    API_KEY = os.getenv("API_KEY")
+    API_SECRET = os.getenv("API_SECRET")
+    API_PASSPHRASE = os.getenv("API_PASSPHRASE")
+
     timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     body = json.dumps(body_dict) if body_dict else ''
     headers = {
         'OK-ACCESS-KEY': API_KEY,
-        'OK-ACCESS-SIGN': generate_signature(timestamp, method, path, body),
+        'OK-ACCESS-SIGN': generate_signature(timestamp, method, path, body, API_SECRET),
         'OK-ACCESS-TIMESTAMP': timestamp,
         'OK-ACCESS-PASSPHRASE': API_PASSPHRASE,
         'Content-Type': 'application/json'
