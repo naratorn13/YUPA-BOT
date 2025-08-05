@@ -29,33 +29,12 @@ def okx_request(method, path, body_dict=None):
     response = requests.request(method, BASE_URL + path, headers=headers, data=body)
     return response.json()
 
-    for item in data_list[0].get("details", []):
-        if item.get("ccy") == token:
-            return float(item.get("availEq"))
-    return 0.0
-
-
-# === GET MARKET PRICE ===
-def get_market_price(symbol):
-    result = okx_request('GET', f'/api/v5/market/ticker?instId={symbol}')
-    data_list = result.get("data", [])
-    if not data_list:
-        print("❌ [get_market_price] No data in ticker response")
-        return 0.0
-    return float(data_list[0].get("last", 0))
-
-
-# === SEND ORDER ===
-def send_order_to_okx(data):
-    symbol = data.get("symbol")
-    side = data.get("side")
-    percent = data.get("percent", 25)
-    leverage = data.get("leverage", 10)
-
-
-    balance = get_balance("USDT")
-
-    body = {
+def send_order(symbol, action, size):
+    inst_id = symbol.upper()
+    side = 'buy' if action == 'buy' else 'sell'
+    order_data = {
+        "instId": inst_id,
+        "tdMode": "isolated",
         "side": side,
         "ordType": "market",
         "sz": str(size),
