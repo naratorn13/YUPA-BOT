@@ -19,10 +19,12 @@ BASE_URL = 'https://www.okx.com'
 
 # === SIGNATURE GENERATOR ===
 def generate_signature(timestamp, method, request_path, body=''):
+    assert API_SECRET is not None, "API_SECRET is not set"
     message = f'{timestamp}{method.upper()}{request_path}{body}'
     mac = hmac.new(API_SECRET.encode(), message.encode(), hashlib.sha256)
     d = mac.digest()
     return base64.b64encode(d).decode()
+
 
 # === OKX REQUEST ===
 def okx_request(method, path, body_dict=None):
