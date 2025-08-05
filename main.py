@@ -42,7 +42,9 @@ def send_order(symbol, action, size):
     }
     return okx_request('POST', '/api/v5/trade/order', order_data)
 
-    print("✅ Order body ready, sending to OKX...")
+def set_position_mode():
+    data = {"posMode": "long_short_mode"}
+    return okx_request("POST", "/api/v5/account/set-position-mode", data)
 
 def set_leverage(symbol):
     data = {
