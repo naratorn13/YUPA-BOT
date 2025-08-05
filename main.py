@@ -123,12 +123,12 @@ def webhook():
     else:
         return jsonify({"status": "invalid action", "data": data})
 
-# === RUN APP ===
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    serve(app, host="0.0.0.0", port=port)
-
 # === HOME ROUTE ===
 @app.route("/", methods=["GET"])
 def home():
     return "✅ Bot is running! Webhook is ready at /webhook"
+
+# === RUN APP ===
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    serve(app, host="0.0.0.0", port=port)
