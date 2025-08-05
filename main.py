@@ -5,18 +5,26 @@ import hashlib
 import base64
 import requests
 import json
-import traceback
 from datetime import datetime, timezone
-from settings import API_KEY, API_SECRET, API_PASSPHRASE, BASE_URL
+import os
 
 app = Flask(__name__)
 
+import os
+
+API_KEY = os.getenv("API_KEY")
+API_SECRET = os.getenv("API_SECRET")
+API_PASSPHRASE = os.getenv("API_PASSPHRASE")
+BASE_URL = 'https://www.okx.com'
+
+# === SIGNATURE GENERATOR ===
 def generate_signature(timestamp, method, request_path, body=''):
     message = f'{timestamp}{method.upper()}{request_path}{body}'
     mac = hmac.new(API_SECRET.encode(), message.encode(), hashlib.sha256)
     d = mac.digest()
     return base64.b64encode(d).decode()
 
+# === OKX REQUEST ===
 def okx_request(method, path, body_dict=None):
     timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     body = json.dumps(body_dict) if body_dict else ''
@@ -27,60 +35,71 @@ def okx_request(method, path, body_dict=None):
         'OK-ACCESS-PASSPHRASE': API_PASSPHRASE,
         'Content-Type': 'application/json'
     }
-    response = requests.request(method, BASE_URL + path, headers=headers, data=body)
+    url = BASE_URL + path
+    response = requests.request(method, url, headers=headers, data=body)
     return response.json()
 
-def send_order(symbol, action, size):
-    inst_id = symbol.upper()
-    side = 'buy' if action == 'buy' else 'sell'
-    order_data = {
-        "instId": inst_id,
-        "tdMode": "isolated",
+# === GET BALANCE ===
+def get_balance(token="USDT"):
+    result = okx_request('GET', '/api/v5/account/balance')
+    for item in result.get("data", [])[0].get("details", []):
+        if item.get("ccy") == token:
+            return float(item.get("availEq"))
+    return 0.0
+
+# === GET MARKET PRICE ===
+def get_market_price(symbol):
+    result = okx_request('GET', f'/api/v5/market/ticker?instId={symbol}')
+    return float(result.get("data", [])[0].get("last", 0))
+
+# === SEND ORDER ===
+def send_order_to_okx(symbol, side, percent=25, leverage=10):
+    balance = get_balance("USDT")
+    price = get_market_price(symbol)
+
+    notional = balance * (percent / 100) * leverage
+    size = round(notional / price, 3)
+
+    print(f"[DEBUG] Balance: {balance}, Price: {price}, Size: {size}")
+
+    body = {
+        "instId": symbol,
+        "tdMode": "cross",
         "side": side,
         "ordType": "market",
-        "sz": str(size)
+        "sz": str(size),
+        "posSide": "long" if side == "buy" else "short",
+        "lever": str(leverage)
     }
-    return okx_request('POST', '/api/v5/trade/order', order_data)
 
-def set_position_mode():
-    data = {"posMode": "long_short_mode"}
-    return okx_request("POST", "/api/v5/account/set-position-mode", data)
+    return okx_request("POST", "/api/v5/trade/order", body)
 
-def set_leverage(symbol):
-    data = {
-        "instId": symbol.upper(),
-        "lever": "10",
-        "mgnMode": "isolated"
-    }
-    return okx_request("POST", "/api/v5/account/set-leverage", data)
+# === HOME ===
+@app.route("/")
+def home():
+    return "Bot is running!"
 
-@app.route('/webhook', methods=['POST'])
+# === WEBHOOK ===
+@app.route("/webhook", methods=["POST"])
 def webhook():
-    try:
-        data = request.json
-        action = data.get("action")
-        symbol = data.get("symbol")
-        size = data.get("size")
+    data = request.get_json()
+    print("[Webhook] Received:", data)
 
-        if not all([action, symbol, size]):
-            return jsonify({"status": "error", "msg": "Missing fields"})
+    action = data.get("action")
+    symbol = data.get("symbol", "SOL-USDT-SWAP")
+    percent = float(data.get("percent", 25))
+    leverage = int(data.get("leverage", 10))
 
-        position_mode_res = set_position_mode()
-        leverage_res = set_leverage(symbol)
-        order_res = send_order(symbol, action, size)
+    if action in ["buy", "sell"]:
+        response = send_order_to_okx(symbol, action, percent, leverage)
+        return jsonify({"status": "order_sent", "response": response})
+    else:
+        return jsonify({"status": "invalid action", "data": data})
 
-        return jsonify({
-            "status": "success",
-            "position_mode": position_mode_res,
-            "leverage": leverage_res,
-            "order": order_res
-        })
+# === RUN APP ===
+from waitress import serve
+import os
 
-    except Exception as e:
-        print("ERROR:", str(e))
-        traceback.print_exc()
-        return jsonify({"status": "error", "msg": str(e)}), 500
-
-if __name__ == '__main__':
-    from waitress import serve
-    serve(app, host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    serve(app, host="0.0.0.0", port=port)
