@@ -7,7 +7,7 @@ import requests
 import json
 import traceback
 from datetime import datetime, timezone
-from config import API_KEY, API_SECRET, API_PASSPHRASE, BASE_URL
+from settings import API_KEY, API_SECRET, API_PASSPHRASE, BASE_URL
 
 app = Flask(__name__)
 
