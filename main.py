@@ -100,9 +100,6 @@ def webhook():
         data = request.json
 
 
-# === RUN APP ===
-from waitress import serve
-import os
 
 if __name__ == "__main__":
     # ✅ ทดสอบดึง balance ที่นี่ (ตอนนี้ okx_request ถูกประกาศแล้ว)
