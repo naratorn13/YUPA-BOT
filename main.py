@@ -82,4 +82,5 @@ def webhook():
         return jsonify({"status": "error", "msg": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    # แก้ไขตรงนี้สำหรับ production จริง
+    app.run(host='0.0.0.0', port=5000)
