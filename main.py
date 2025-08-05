@@ -7,6 +7,8 @@ import requests
 import json
 from datetime import datetime, timezone
 import os
+import math 
+from decimal import Decimal, ROUND_DOWN, getcontext
 
 app = Flask(__name__)
 
@@ -15,6 +17,10 @@ import os
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
 API_PASSPHRASE = os.getenv("API_PASSPHRASE")
+
+if not API_SECRET:
+    raise EnvironmentError("❌ API_SECRET ไม่ถูกโหลดจาก environment variable!")
+
 BASE_URL = 'https://www.okx.com'
 
 print("[DEBUG] API_KEY:", API_KEY)
@@ -60,13 +66,28 @@ def get_market_price(symbol):
     result = okx_request('GET', f'/api/v5/market/ticker?instId={symbol}')
     return float(result.get("data", [])[0].get("last", 0))
 
+# === GET LOT SIZE ===
+def get_lot_size(symbol):
+    result = okx_request('GET', f'/api/v5/public/instruments?instType=SWAP')
+    for item in result.get("data", []):
+        if item["instId"] == symbol:
+            return float(item["lotSz"])
+    return 0.01  # fallback เผื่อ error
+
 # === SEND ORDER ===
 def send_order_to_okx(symbol, side, percent=25, leverage=10):
     balance = get_balance("USDT")
     price = get_market_price(symbol)
+    lot_size = get_lot_size(symbol)
 
     notional = balance * (percent / 100) * leverage
-    size = round(notional / price, 3)
+    raw_size = notional / price
+    getcontext().prec = 18  # ความละเอียดของทศนิยม
+    lot_size_decimal = Decimal(str(lot_size))
+    raw_size_decimal = Decimal(str(raw_size))
+    size = (raw_size_decimal / lot_size_decimal).to_integral_value(rounding=ROUND_DOWN) * lot_size_decimal
+    size = float(size)
+
 
     print(f"[DEBUG] Balance: {balance}, Price: {price}, Size: {size}")
 
@@ -81,11 +102,6 @@ def send_order_to_okx(symbol, side, percent=25, leverage=10):
     }
 
     return okx_request("POST", "/api/v5/trade/order", body)
-
-# === HOME ===
-@app.route("/")
-def home():
-    return "Bot is running!"
 
 # === WEBHOOK ===
 @app.route("/webhook", methods=["POST"])
