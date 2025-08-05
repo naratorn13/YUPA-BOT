@@ -1,16 +1,18 @@
-from flask import Flask, request, jsonify
-from waitress import serve
+# === Standard Library ===
+import os
+import json
 import time
 import hmac
 import hashlib
 import base64
 import requests
-import json
-from datetime import datetime, timezone
-import os
 import math
+from datetime import datetime, timezone
 from decimal import Decimal, ROUND_DOWN, getcontext
 
+# === Third-party ===
+from flask import Flask, request, jsonify
+from waitress import serve
 
 app = Flask(__name__)
 
@@ -122,9 +124,6 @@ def webhook():
         return jsonify({"status": "invalid action", "data": data})
 
 # === RUN APP ===
-from waitress import serve
-import os
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     serve(app, host="0.0.0.0", port=port)
