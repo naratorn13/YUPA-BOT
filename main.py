@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from waitress import serve
 import time
 import hmac
 import hashlib
@@ -7,12 +8,12 @@ import requests
 import json
 from datetime import datetime, timezone
 import os
-import math 
+import math
 from decimal import Decimal, ROUND_DOWN, getcontext
+
 
 app = Flask(__name__)
 
-import os
 
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
@@ -68,7 +69,7 @@ def get_market_price(symbol):
 
 # === GET LOT SIZE ===
 def get_lot_size(symbol):
-    result = okx_request('GET', f'/api/v5/public/instruments?instType=SWAP')
+    result = okx_request('GET', f'/api/v5/public/instruments?instType=SWAP&instId={symbol}')
     for item in result.get("data", []):
         if item["instId"] == symbol:
             return float(item["lotSz"])
