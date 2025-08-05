@@ -98,11 +98,6 @@ def set_leverage(symbol):
 def webhook():
     try:
         data = request.json
-        result = send_order_to_okx(data)
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 
 
 # === RUN APP ===
