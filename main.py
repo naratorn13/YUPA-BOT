@@ -38,9 +38,7 @@ def send_order(symbol, action, size):
         "tdMode": "isolated",
         "side": side,
         "ordType": "market",
-        "sz": str(size),
-        "posSide": "long" if side == "buy" else "short",
-        "lever": str(leverage)
+        "sz": str(size)
     }
 
     print("✅ Order body ready, sending to OKX...")
