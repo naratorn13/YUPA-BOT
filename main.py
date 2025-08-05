@@ -6,7 +6,6 @@ import base64
 import requests
 import json
 from datetime import datetime, timezone
-import os
 
 app = Flask(__name__)
 
@@ -20,11 +19,6 @@ def generate_signature(timestamp, method, request_path, body=''):
     mac = hmac.new(API_SECRET.encode(), message.encode(), hashlib.sha256)
     d = mac.digest()
     return base64.b64encode(d).decode()
-
-# ทดสอบดึง balance
-status, data = okx_request("GET", "/api/v5/account/balance")
-print(f"Status: {status}")
-print("Response:", data)
 
 # === OKX REQUEST ===
 def okx_request(method, path, body_dict=None):
@@ -153,6 +147,11 @@ from waitress import serve
 import os
 
 if __name__ == "__main__":
+    # ✅ ทดสอบดึง balance ที่นี่ (ตอนนี้ okx_request ถูกประกาศแล้ว)
+    status, data = okx_request("GET", "/api/v5/account/balance")
+    print(f"Status: {status}")
+    print("Response:", data)
+
     port = int(os.environ.get("PORT", 8080))
     serve(app, host="0.0.0.0", port=port)
 
