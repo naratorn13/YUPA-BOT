@@ -45,27 +45,6 @@ def send_order(symbol, action, size):
 
     print("✅ Order body ready, sending to OKX...")
 
-    try:
-        response = okx_request("POST", "/api/v5/trade/order", body)
-        print(f"✅ Order sent! Response: {response}")
-        return response
-    except Exception as e:
-        print(f"❌ Error while sending order: {str(e)}")
-        return None
-
-
-# === HOME ===
-@app.route("/")
-def home():
-    return "Bot is running!"
-# === ENV CHECK ===
-@app.route("/envcheck")
-def env_check():
-    return jsonify({
-        "API_KEY": API_KEY,
-        "API_SECRET": API_SECRET,
-        "API_PASSPHRASE": API_PASSPHRASE,
-        "BASE_URL": BASE_URL
 def set_leverage(symbol):
     data = {
         "instId": symbol.upper(),
