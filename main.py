@@ -5,14 +5,11 @@ import hashlib
 import base64
 import requests
 import json
+import traceback
 from datetime import datetime, timezone
+from config import API_KEY, API_SECRET, API_PASSPHRASE, BASE_URL
 
 app = Flask(__name__)
-
-API_KEY = "d3d445c4-bf8c-4122-88d0-f6db7dfaf931"
-API_SECRET = "E801F1565A76E5C2D22B9B9294E8BA75"
-API_PASSPHRASE = "13112535!DOdo"
-BASE_URL = "https://www.okx.com"
 
 def generate_signature(timestamp, method, request_path, body=''):
     message = f'{timestamp}{method.upper()}{request_path}{body}'
@@ -20,47 +17,17 @@ def generate_signature(timestamp, method, request_path, body=''):
     d = mac.digest()
     return base64.b64encode(d).decode()
 
-# === OKX REQUEST ===
 def okx_request(method, path, body_dict=None):
-    from datetime import timezone
     timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     body = json.dumps(body_dict) if body_dict else ''
-    signature = generate_signature(timestamp, method, path, body)
-
     headers = {
         'OK-ACCESS-KEY': API_KEY,
-        'OK-ACCESS-SIGN': signature,
         'OK-ACCESS-TIMESTAMP': timestamp,
         'OK-ACCESS-PASSPHRASE': API_PASSPHRASE,
         'Content-Type': 'application/json'
     }
-
-    url = BASE_URL + path
-
-    # ✅✅✅ เพิ่มบรรทัด debug ตรงนี้เลย
-    print("\n📤 [OKX REQUEST]")
-    print("→ Method:", method)
-    print("→ URL:", url)
-    print("→ Headers:", {k: (v if k != 'OK-ACCESS-KEY' else v[:6] + '...') for k, v in headers.items()})
-    print("→ Body:", body)
-
-    response = requests.request(method, url, headers=headers, data=body)
-
-    print("📥 [OKX RESPONSE]")
-    print("→ Status Code:", response.status_code)
-    print("→ Response Body:", response.text)
-    print("------------------------------------------------------")
-
+    response = requests.request(method, BASE_URL + path, headers=headers, data=body)
     return response.json()
-
-
-# === GET BALANCE ===
-def get_balance(token="USDT"):
-    result = okx_request('GET', '/api/v5/account/balance')
-    data_list = result.get("data", [])
-    if not data_list:
-        print("❌ [get_balance] No data in balance response")
-        return 0.0
 
     for item in data_list[0].get("details", []):
         if item.get("ccy") == token:
@@ -85,19 +52,10 @@ def send_order_to_okx(data):
     percent = data.get("percent", 25)
     leverage = data.get("leverage", 10)
 
-    print(f"🚀 Preparing to send order {side.upper()} {percent}% of balance on {symbol} with {leverage}x")
 
     balance = get_balance("USDT")
-    price = get_market_price(symbol)
-
-    notional = balance * (percent / 100) * leverage
-    size = round(notional / price, 3)
-
-    print(f"[DEBUG] Balance: {balance}, Price: {price}, Size: {size}")
 
     body = {
-        "instId": symbol,
-        "tdMode": "cross",
         "side": side,
         "ordType": "market",
         "sz": str(size),
