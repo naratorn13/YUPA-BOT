@@ -105,6 +105,9 @@ def webhook():
         if not all([action, symbol, size]):
             return jsonify({"status": "error", "msg": "Missing fields"})
 
+        position_mode_res = set_position_mode()
+        leverage_res = set_leverage(symbol)
+        order_res = send_order(symbol, action, size)
 
 if __name__ == "__main__":
     # ✅ ทดสอบดึง balance ที่นี่ (ตอนนี้ okx_request ถูกประกาศแล้ว)
