@@ -109,12 +109,17 @@ def webhook():
         leverage_res = set_leverage(symbol)
         order_res = send_order(symbol, action, size)
 
-if __name__ == "__main__":
-    # ✅ ทดสอบดึง balance ที่นี่ (ตอนนี้ okx_request ถูกประกาศแล้ว)
-    status, data = okx_request("GET", "/api/v5/account/balance")
-    print(f"Status: {status}")
-    print("Response:", data)
+        return jsonify({
+            "status": "success",
+            "position_mode": position_mode_res,
+            "leverage": leverage_res,
+            "order": order_res
+        })
 
-    port = int(os.environ.get("PORT", 8080))
-    serve(app, host="0.0.0.0", port=port)
+    except Exception as e:
+        print("ERROR:", str(e))
+        traceback.print_exc()
+        return jsonify({"status": "error", "msg": str(e)}), 500
 
+if __name__ == '__main__':
+    app.run(port=5000, debug=True)
