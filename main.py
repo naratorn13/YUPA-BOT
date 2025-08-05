@@ -127,3 +127,8 @@ import os
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     serve(app, host="0.0.0.0", port=port)
+
+# === HOME ROUTE ===
+@app.route("/", methods=["GET"])
+def home():
+    return "✅ Bot is running! Webhook is ready at /webhook"
