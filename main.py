@@ -86,11 +86,16 @@ def env_check():
         "API_SECRET": API_SECRET,
         "API_PASSPHRASE": API_PASSPHRASE,
         "BASE_URL": BASE_URL
-    })
+def set_leverage(symbol):
+    data = {
+        "instId": symbol.upper(),
+        "lever": "10",
+        "mgnMode": "isolated"
+    }
+    return okx_request("POST", "/api/v5/account/set-leverage", data)
 
-# === WEBHOOK ===
-@app.route("/order", methods=["POST"])
-def place_order():
+@app.route('/webhook', methods=['POST'])
+def webhook():
     try:
         data = request.json
         result = send_order_to_okx(data)
