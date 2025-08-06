@@ -76,6 +76,19 @@ def get_lot_size(symbol):
         if item["instId"] == symbol:
             return float(item["lotSz"])
     return 0.01  # fallback เผื่อ error
+# === CLOSE POSITION ก่อนเปิดใหม่ ===
+def close_position(symbol, side):
+    opposite_side = "short" if side == "buy" else "long"
+    close_body = {
+        "instId": symbol,
+        "tdMode": "cross",
+        "side": "sell" if side == "buy" else "buy",  # ปิดฝั่งตรงข้าม
+        "ordType": "market",
+        "posSide": opposite_side,
+        "sz": "9999"  # ปิดทั้งหมด
+    }
+    response = okx_request("POST", "/api/v5/trade/order", close_body)
+    print(f"[DEBUG] Close opposite position → {opposite_side}: {response}")
 
 # === SEND ORDER ===
 def send_order_to_okx(symbol, side, percent=25, leverage=10):
@@ -90,7 +103,7 @@ def send_order_to_okx(symbol, side, percent=25, leverage=10):
     raw_size_decimal = Decimal(str(raw_size))
     size = (raw_size_decimal / lot_size_decimal).to_integral_value(rounding=ROUND_DOWN) * lot_size_decimal
     size = float(size)
-
+    
 
     print(f"[DEBUG] Balance: {balance}, Price: {price}, Size: {size}")
 
