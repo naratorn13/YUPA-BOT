@@ -92,6 +92,7 @@ def close_position(symbol, side):
 
 # === SEND ORDER ===
 def send_order_to_okx(symbol, side, percent=25, leverage=10):
+    close_position(symbol, side)
     balance = get_balance("USDT")
     price = get_market_price(symbol)
     lot_size = get_lot_size(symbol)
