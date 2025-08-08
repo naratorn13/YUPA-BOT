@@ -105,8 +105,8 @@ def send_order_to_okx(symbol, side, percent=25, leverage=10):
     opposite_side = "short" if side == "buy" else "long"
     open_size = get_open_position_size(symbol, opposite_side)
     if open_size > 0:
-        close_position(symbol, side, open_size)
-
+         close_position(symbol, opposite_side, open_size)
+ 
     print(f"[DEBUG] Balance: {balance}, Price: {price}, Size: {size}")
 
 # === CLOSE OPPOSITE POSITION ===
