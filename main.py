@@ -78,20 +78,15 @@ def get_lot_size(symbol):
     return 0.01  # fallback เผื่อ error
 
 # === CLOSE POSITION ก่อนเปิดใหม่ ===
-def close_position(symbol, side, size):
-    opposite_side = "short" if side == "buy" else "long"
-    close_body = {
-        "instId": symbol,
-        "tdMode": "cross",
-        "side": "sell" if side == "buy" else "buy",
-        "ordType": "market",
-        "posSide": opposite_side,
-        "sz": str(size)
-    }
-    response = okx_request("POST", "/api/v5/trade/order", close_body)
-    print(f"[DEBUG] Close opposite position → {opposite_side}: {response}")
+def get_open_position_size(symbol, side):
+    result = okx_request("GET", "/api/v5/account/positions")
+    positions = result.get("data", [])
 
-# === SEND ORDER ===
+    for pos in positions:
+        if pos["instId"] == symbol and pos["posSide"] == side:
+            return float(pos["sz"])
+    return 0.0
+
 def send_order_to_okx(symbol, side, percent=25, leverage=10):
     balance = get_balance("USDT")
     price = get_market_price(symbol)
@@ -99,27 +94,38 @@ def send_order_to_okx(symbol, side, percent=25, leverage=10):
 
     notional = balance * (percent / 100) * leverage
     raw_size = notional / price
-    getcontext().prec = 18  # ความละเอียดของทศนิยม
+
+    getcontext().prec = 18
     lot_size_decimal = Decimal(str(lot_size))
     raw_size_decimal = Decimal(str(raw_size))
     size = (raw_size_decimal / lot_size_decimal).to_integral_value(rounding=ROUND_DOWN) * lot_size_decimal
     size = float(size)
-    
-    
-    close_position(symbol, side, size)
+
+    # ✨ เพิ่มตรงนี้เพื่อปิดฝั่งตรงข้ามก่อน
+    opposite_side = "short" if side == "buy" else "long"
+    open_size = get_open_position_size(symbol, opposite_side)
+    if open_size > 0:
+        close_position(symbol, side, open_size)
+
     print(f"[DEBUG] Balance: {balance}, Price: {price}, Size: {size}")
 
-    body = {
+# === CLOSE OPPOSITE POSITION ===
+def close_position(symbol, side, close_size):
+    opposite_side = "sell" if side == "buy" else "buy"
+    pos_side = "short" if side == "buy" else "long"
+
+    close_body = {
         "instId": symbol,
         "tdMode": "cross",
-        "side": side,
+        "side": opposite_side,
         "ordType": "market",
-        "sz": str(size),
-        "posSide": "long" if side == "buy" else "short",
-        "lever": str(leverage)
+        "posSide": pos_side,
+        "sz": str(close_size)
     }
 
-    return okx_request("POST", "/api/v5/trade/order", body)
+    response = okx_request("POST", "/api/v5/trade/order", close_body)
+    print(f"[DEBUG] ✅ Close opposite position → {pos_side} → {response}")
+
 
 # === WEBHOOK ===
 @app.route("/webhook", methods=["POST"])
