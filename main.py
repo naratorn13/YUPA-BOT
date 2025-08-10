@@ -34,7 +34,7 @@ def _sign(ts, method, path, body=''):
     mac = hmac.new(API_SECRET.encode(), msg.encode(), hashlib.sha256).digest()
     return base64.b64encode(mac).decode()
 
-def okx_request(method, path, body=None):
+def okx_request(method, path, body=None, timeout=15):
     ts = _now_iso()
     payload = json.dumps(body) if body else ''
     headers = {
@@ -45,7 +45,7 @@ def okx_request(method, path, body=None):
         'Content-Type': 'application/json'
     }
     url = BASE_URL + path
-    r = requests.request(method, url, headers=headers, data=payload, timeout=15)
+    r = requests.request(method, url, headers=headers, data=payload, timeout=timeout)
     try:
         data = r.json()
     except Exception:
@@ -53,10 +53,22 @@ def okx_request(method, path, body=None):
     return data
 
 # --- Account/Market utils ---
+def get_pos_mode():
+    res = okx_request("GET", "/api/v5/account/config")
+    try:
+        return (res.get("data") or [{}])[0].get("posMode")  # 'long_short_mode' or 'net_mode'
+    except Exception:
+        return None
+
 def ensure_long_short_mode():
-    # Set position mode to long/short (idempotent)
+    # Set position mode to long/short (idempotent) — NOTE: OKX จะตั้งค่าไม่ได้ถ้ามีโพสิชันค้างอยู่
+    current = get_pos_mode()
+    if current == "long_short_mode":
+        return {"ok": True, "posMode": current, "skipped": True}
     body = {"posMode": "long_short_mode"}
-    return okx_request("POST", "/api/v5/account/set-position-mode", body)
+    res = okx_request("POST", "/api/v5/account/set-position-mode", body)
+    res["posMode_before"] = current
+    return res
 
 def set_leverage(instId, lever=10, mgnMode="cross"):
     body = {"instId": instId, "lever": str(lever), "mgnMode": mgnMode}
@@ -67,7 +79,6 @@ def get_balance(ccy="USDT"):
     details = (res.get("data") or [{}])[0].get("details") or []
     for d in details:
         if d.get("ccy") == ccy:
-            # availEq is the available equity in the selected currency
             return float(d.get("availEq", 0.0))
     return 0.0
 
@@ -82,14 +93,19 @@ def get_lot_size(instId):
             return float(it.get("lotSz", 0.01))
     return 0.01
 
+def list_positions(instId=None):
+    res = okx_request("GET", "/api/v5/account/positions")
+    data = res.get("data", [])
+    if instId:
+        data = [p for p in data if p.get("instId") == instId]
+    return data
+
 def get_open_position_size(instId, pos_side):
     # pos_side: "long" or "short"
-    res = okx_request("GET", "/api/v5/account/positions")
-    for p in res.get("data", []):
-        if p.get("instId") == instId and p.get("posSide") == pos_side:
-            # size is contracts, return as float
+    for p in list_positions(instId):
+        if p.get("posSide") == pos_side:
             try:
-                return float(p.get("sz", 0))
+                return float(p.get("pos", p.get("sz", 0)))  # fallback to 'pos' if available
             except Exception:
                 return 0.0
     return 0.0
@@ -113,45 +129,71 @@ def calc_size_from_percent(instId, percent, lever):
     return float(size), {"balance": balance, "price": price, "lot": lot}
 
 # --- Trade primitives ---
-def close_position(instId, pos_side, sz):
-    # In long/short mode: close LONG => sell with posSide=long; close SHORT => buy with posSide=short
-    side = "sell" if pos_side == "long" else "buy"
+def order_market(instId, side, posSide, sz, reduce_only=False):
     body = {
         "instId": instId,
         "tdMode": "cross",
-        "side": side,
+        "side": side,              # 'buy' or 'sell'
         "ordType": "market",
-        "posSide": pos_side,
         "sz": str(sz)
     }
+    if posSide:
+        body["posSide"] = posSide  # 'long' or 'short'
+    if reduce_only:
+        body["reduceOnly"] = "true"
     return okx_request("POST", "/api/v5/trade/order", body)
+
+def close_position_whole(instId, pos_side):
+    # ใช้ endpoint เฉพาะเพื่อปิดทั้งโพสิชัน — ไม่ต้องระบุขนาด
+    body = {
+        "instId": instId,
+        "mgnMode": "cross",
+        "posSide": pos_side
+    }
+    res = okx_request("POST", "/api/v5/trade/close-position", body)
+    return res
+
+def close_position_safe(instId, pos_side, sz):
+    # 1) ลองใช้ close-position ทั้งโพสิชันก่อน
+    res1 = close_position_whole(instId, pos_side)
+    code = str(res1.get("code", ""))
+    if code == "0":
+        return {"method": "close-position", "resp": res1}
+
+    # 2) ถ้าปิดไม่สำเร็จ ใช้ market order แบบ reduceOnly ปิดให้หมด
+    side = "sell" if pos_side == "long" else "buy"
+    res2 = order_market(instId, side=side, posSide=pos_side, sz=sz, reduce_only=True)
+    return {"method": "reduceOnly", "resp": res2}
 
 def open_position(instId, direction, sz):
-    # direction: "long" or "short"
     side = "buy" if direction == "long" else "sell"
-    body = {
-        "instId": instId,
-        "tdMode": "cross",
-        "side": side,
-        "ordType": "market",
-        "posSide": direction,  # "long" or "short"
-        "sz": str(sz)
-    }
-    return okx_request("POST", "/api/v5/trade/order", body)
+    return order_market(instId, side=side, posSide=direction, sz=sz, reduce_only=False)
 
 # --- Orchestrator ---
+def wait_until_closed(instId, pos_side, timeout_sec=2.0):
+    t0 = time.time()
+    while time.time() - t0 < timeout_sec:
+        time.sleep(0.2)
+        if get_open_position_size(instId, pos_side) <= 0:
+            return True
+    return False
+
 def flip_if_needed_and_open(instId, want_direction, percent, lever):
-    # 1) Make sure long/short mode and leverage are set (idempotent on OKX)
-    ensure_long_short_mode()
+    # Read-only check mode (อย่าพยายามเปลี่ยนถ้ายังมีโพสิชันค้างอยู่)
+    pos_mode = get_pos_mode()
+
+    # 1) Set leverage (idempotent)
     set_leverage(instId, lever=lever, mgnMode="cross")
 
-    # 2) Close opposite side if it exists
+    # 2) Close opposite side if exists
     opposite = "short" if want_direction == "long" else "long"
     opp_sz = get_open_position_size(instId, opposite)
 
     closed = None
     if opp_sz > 0:
-        closed = close_position(instId, opposite, opp_sz)
+        closed = close_position_safe(instId, opposite, opp_sz)
+        # รอจนกว่าปิดจริง
+        wait_until_closed(instId, opposite, timeout_sec=3.0)
 
     # 3) Compute fresh size from latest balance
     size, meta = calc_size_from_percent(instId, percent, lever)
@@ -160,6 +202,8 @@ def flip_if_needed_and_open(instId, want_direction, percent, lever):
             "ok": False,
             "reason": "SIZE_ZERO",
             "meta": meta,
+            "posMode": pos_mode,
+            "positions": list_positions(instId),
             "closed": closed
         }
 
@@ -168,6 +212,8 @@ def flip_if_needed_and_open(instId, want_direction, percent, lever):
     return {
         "ok": True,
         "meta": meta,
+        "posMode": pos_mode,
+        "positions": list_positions(instId),
         "closed": closed,
         "opened": opened,
         "size": size,
@@ -182,15 +228,12 @@ def health():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json(force=True, silent=True) or {}
-    # Expected payload examples:
     # {"action":"long","symbol":"SOL-USDT-SWAP","percent":50,"leverage":10}
-    # {"action":"buy","symbol":"SOL-USDT-SWAP"}  # buy==long by default percent=50, leverage=10
     action = (data.get("action") or "").lower()
     instId = data.get("symbol", "SOL-USDT-SWAP")
     percent = float(data.get("percent", 50))
     lever = int(data.get("leverage", 10))
 
-    # Map action to desired direction
     if action in ("long", "buy"):
         direction = "long"
     elif action in ("short", "sell"):
