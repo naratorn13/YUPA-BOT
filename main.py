@@ -2,7 +2,6 @@
 # === Standard Library ===
 import os
 import json
-import time
 import hmac
 import hashlib
 import base64
@@ -45,7 +44,7 @@ def okx_request(method, path, body=None):
         'Content-Type': 'application/json'
     }
     url = BASE_URL + path
-    r = requests.request(method, url, headers=headers, data=payload, timeout=15)
+    r = requests.request(method, url, headers=headers, data=payload, timeout=20)
     try:
         data = r.json()
     except Exception:
@@ -56,8 +55,7 @@ def okx_request(method, path, body=None):
 def ensure_long_short_mode():
     # Set position mode to long/short (idempotent)
     body = {"posMode": "long_short_mode"}
-    res = okx_request("POST", "/api/v5/account/set-position-mode", body)
-    return res
+    return okx_request("POST", "/api/v5/account/set-position-mode", body)
 
 def set_leverage(instId, lever=10, mgnMode="cross"):
     body = {"instId": instId, "lever": str(lever), "mgnMode": mgnMode}
@@ -88,7 +86,6 @@ def get_open_position_size(instId, pos_side):
     res = okx_request("GET", "/api/v5/account/positions")
     for p in res.get("data", []):
         if p.get("instId") == instId and p.get("posSide") == pos_side:
-            # size is contracts, return as float
             try:
                 return float(p.get("sz", 0))
             except Exception:
@@ -115,7 +112,9 @@ def calc_size_from_percent(instId, percent, lever):
 
 # --- Trade primitives ---
 def close_position(instId, pos_side, sz):
-    # In long/short mode: close LONG => sell with posSide=long; close SHORT => buy with posSide=short
+    # Correct close semantics in long/short mode:
+    #  - close LONG  => side='sell', posSide='long'
+    #  - close SHORT => side='buy',  posSide='short'
     side = "sell" if pos_side == "long" else "buy"
     body = {
         "instId": instId,
@@ -144,7 +143,7 @@ def open_position(instId, direction, sz):
 
 # --- Orchestrator ---
 def flip_if_needed_and_open(instId, want_direction, percent, lever):
-    # 1) Make sure long/short mode and leverage are set (idempotent on OKX)
+    # 1) Make sure long/short mode and leverage are set
     ensure_long_short_mode()
     set_leverage(instId, lever=lever, mgnMode="cross")
 
