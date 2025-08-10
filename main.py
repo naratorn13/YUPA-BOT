@@ -2,6 +2,7 @@
 # === Standard Library ===
 import os
 import json
+import time
 import hmac
 import hashlib
 import base64
@@ -44,7 +45,7 @@ def okx_request(method, path, body=None):
         'Content-Type': 'application/json'
     }
     url = BASE_URL + path
-    r = requests.request(method, url, headers=headers, data=payload, timeout=20)
+    r = requests.request(method, url, headers=headers, data=payload, timeout=15)
     try:
         data = r.json()
     except Exception:
@@ -86,6 +87,7 @@ def get_open_position_size(instId, pos_side):
     res = okx_request("GET", "/api/v5/account/positions")
     for p in res.get("data", []):
         if p.get("instId") == instId and p.get("posSide") == pos_side:
+            # size is contracts, return as float
             try:
                 return float(p.get("sz", 0))
             except Exception:
@@ -112,9 +114,7 @@ def calc_size_from_percent(instId, percent, lever):
 
 # --- Trade primitives ---
 def close_position(instId, pos_side, sz):
-    # Correct close semantics in long/short mode:
-    #  - close LONG  => side='sell', posSide='long'
-    #  - close SHORT => side='buy',  posSide='short'
+    # In long/short mode: close LONG => sell with posSide=long; close SHORT => buy with posSide=short
     side = "sell" if pos_side == "long" else "buy"
     body = {
         "instId": instId,
@@ -124,8 +124,7 @@ def close_position(instId, pos_side, sz):
         "posSide": pos_side,
         "sz": str(sz)
     }
-    res = okx_request("POST", "/api/v5/trade/order", body)
-    return res
+    return okx_request("POST", "/api/v5/trade/order", body)
 
 def open_position(instId, direction, sz):
     # direction: "long" or "short"
@@ -138,12 +137,11 @@ def open_position(instId, direction, sz):
         "posSide": direction,  # "long" or "short"
         "sz": str(sz)
     }
-    res = okx_request("POST", "/api/v5/trade/order", body)
-    return res
+    return okx_request("POST", "/api/v5/trade/order", body)
 
 # --- Orchestrator ---
 def flip_if_needed_and_open(instId, want_direction, percent, lever):
-    # 1) Make sure long/short mode and leverage are set
+    # 1) Make sure long/short mode and leverage are set (idempotent on OKX)
     ensure_long_short_mode()
     set_leverage(instId, lever=lever, mgnMode="cross")
 
@@ -193,7 +191,6 @@ def webhook():
     lever = int(data.get("leverage", 10))
 
     # Map action to desired direction
-    direction = None
     if action in ("long", "buy"):
         direction = "long"
     elif action in ("short", "sell"):
